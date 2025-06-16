@@ -117,6 +117,7 @@ namespace WebApplication1.Application.Services
                 };
 
             }
+
             return new ApiResponse<User>
             {
                 IsSuccess = true,
@@ -258,6 +259,7 @@ namespace WebApplication1.Application.Services
                     Id = user.Id,
                     Email = user.Email!,
                     UserName = user.UserName!,
+                    FullName = user.FullName!,
                     Role = (await _userManager.GetRolesAsync(user))[0],
                 }
             };

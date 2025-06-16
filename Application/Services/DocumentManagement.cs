@@ -43,6 +43,18 @@ namespace WebApplication1.Application.Services
                 File.Delete(document.FilePath);
             }
 
+            var savings = _dbContext.DocumentSavings.Where(ds => ds.DocumentId == documentId);
+            _dbContext.DocumentSavings.RemoveRange(savings);
+
+            var analyze = _dbContext.AnalyzeResponses
+                .Include(a => a.ClauseResults)
+                .Where(a => a.DocumentId == documentId);
+            foreach (var a in analyze)
+            {
+                _dbContext.ClauseResults.RemoveRange(a.ClauseResults);
+            }
+            _dbContext.AnalyzeResponses.RemoveRange(analyze);
+
             _dbContext.Documents.Remove(document);
             var res = await _dbContext.SaveChangesAsync();
             if (res > 0)
@@ -97,7 +109,7 @@ namespace WebApplication1.Application.Services
 
         public async Task<ApiResponse<List<Document>>> GetDocumentsAsync()
         {
-            var documents = await _dbContext.Documents.ToListAsync();
+            var documents = await _dbContext.Documents.Include(d => d.User).Include(d => d.Category).ToListAsync();
             if (documents == null)
             {
                 return new ApiResponse<List<Document>>
@@ -118,7 +130,7 @@ namespace WebApplication1.Application.Services
 
         }
 
-        public async Task<ApiResponse<string>> GetDocumentUrlAsync(int documentId, string userId)
+        public async Task<ApiResponse<string>> GetDocumentUrlAsync(int documentId)
         {
             var document = await _dbContext.Documents.FirstOrDefaultAsync(d => d.Id == documentId);
             if (document == null)
@@ -130,19 +142,6 @@ namespace WebApplication1.Application.Services
                     StatusCode = 404
                 };
             }
-
-            //if (document.UserId != userId)
-            //{
-            //    return new ApiResponse<string>
-            //    {
-            //        IsSuccess = false,
-            //        Message = "You do not have permission to access this document.",
-            //        StatusCode = 403
-            //    };
-            //}
-
-            // Example: build a URL to a download endpoint
-            // You may want to use configuration or HttpContext to get the base URL in a real app
 
             var url = $"https://localhost:7147/PDFs/{document.FileName}";
             return new ApiResponse<string>
@@ -158,6 +157,8 @@ namespace WebApplication1.Application.Services
         {
             var documents = await _dbContext.Documents
                 .Where(d => d.CategoryId == categoryId)
+                .Include(d => d.Category)
+                .Include(d => d.User)
                 .ToListAsync();
 
             if (documents == null)
@@ -182,8 +183,10 @@ namespace WebApplication1.Application.Services
         public async Task<ApiResponse<List<Document>>> GetUserDocumentsAsync(string userId)
         {
             var documents = await _dbContext.Documents
-               .Where(d => d.UserId == userId)
-               .ToListAsync();
+                .Where(d => d.UserId == userId)
+                .Include(d => d.Category)
+                .Include(d => d.User)
+                .ToListAsync();
 
             if (documents == null)
             {
@@ -204,7 +207,7 @@ namespace WebApplication1.Application.Services
             };
         }
 
-        public async Task<ApiResponse<Document>> UpdateDocumentAsync(UploadFileModel file, int documentId, string userId)
+        public async Task<ApiResponse<Document>> UpdateDocumentAsync(UpdateFileModel file, int documentId, string userId)
         {
             var document = await _dbContext.Documents.FirstOrDefaultAsync(m => m.Id == documentId);
             if (document == null)
@@ -227,12 +230,12 @@ namespace WebApplication1.Application.Services
                 };
             }
 
-            if (file == null || file.FileUpload == null || file.FileUpload.Length == 0)
+            if (file == null)
             {
                 return new ApiResponse<Document>
                 {
                     IsSuccess = false,
-                    Message = "File is empty or not provided.",
+                    Message = "Invalid update request. File metadata is required.",
                     StatusCode = 400
                 };
             }
@@ -247,53 +250,59 @@ namespace WebApplication1.Application.Services
                     StatusCode = 404
                 };
             }
-            var projectDirectory = Directory.GetCurrentDirectory(); // D:\tot_nghiep\WebApplication1
-            var folderPath = Path.Combine(projectDirectory, "wwwroot/PDFs");
-            if (!Directory.Exists(folderPath))
-            {
-                Directory.CreateDirectory(folderPath);
-            }
-            var fileName = Guid.NewGuid().ToString() + Path.GetExtension(file.FileUpload.FileName);
-            var filePath = Path.Combine(folderPath, fileName);
-            //var fileName = Guid.NewGuid().ToString() + Path.GetExtension(file.FileUpload.FileName);
-            //var rDirectory = Directory.GetParent(Directory.GetCurrentDirectory()).FullName;
-            //var filePath = Path.Combine(rDirectory, "PDFs", fileName);
 
-            if (!fileName.EndsWith(".pdf", StringComparison.OrdinalIgnoreCase))
+            if (file.FileUpload != null && file.FileUpload.Length > 0)
             {
-                return new ApiResponse<Document>
+                var projectDirectory = Directory.GetCurrentDirectory(); // D:\tot_nghiep\WebApplication1
+                var folderPath = Path.Combine(projectDirectory, "wwwroot/PDFs");
+
+                if (!Directory.Exists(folderPath))
                 {
-                    IsSuccess = false,
-                    Message = "Only PDF files are allowed.",
-                    StatusCode = 400
-                };
+                    Directory.CreateDirectory(folderPath);
+                }
+
+                var fileName = Guid.NewGuid().ToString() + Path.GetExtension(file.FileUpload.FileName);
+                var filePath = Path.Combine(folderPath, fileName);
+
+                if (!fileName.EndsWith(".pdf", StringComparison.OrdinalIgnoreCase))
+                {
+                    return new ApiResponse<Document>
+                    {
+                        IsSuccess = false,
+                        Message = "Only PDF files are allowed.",
+                        StatusCode = 400
+                    };
+                }
+
+                // Xóa file cũ nếu tồn tại
+                if (!string.IsNullOrEmpty(document.FilePath) && File.Exists(document.FilePath))
+                {
+                    File.Delete(document.FilePath);
+                }
+
+                using (var stream = new FileStream(filePath, FileMode.Create))
+                {
+                    await file.FileUpload.CopyToAsync(stream);
+                }
+
+                document.FileName = fileName;
+                document.FilePath = filePath;
             }
 
-            if (File.Exists(document.FilePath))
-            {
-                File.Delete(document.FilePath);
-            }
-
-            using (var stream = new FileStream(filePath, FileMode.Create))
-            {
-                await file.FileUpload.CopyToAsync(stream);
-            }
-
+            document.Code = file.Code;
             document.UserId = userId;
             document.CategoryId = category.Id;
             document.Title = file.Title;
             document.Description = file.Description;
             document.Version = file.Version;
-            document.FileName = fileName;
-            document.FilePath = filePath;
 
             var res = await _dbContext.SaveChangesAsync();
             if (res > 0)
             {
                 return new ApiResponse<Document> { IsSuccess = true, Message = "Update document successfully", Response = document, StatusCode = 201 };
             }
-            return new ApiResponse<Document> { IsSuccess = false, Message = "Update document failed", Response = document, StatusCode = 400 };
 
+            return new ApiResponse<Document> { IsSuccess = false, Message = "Update document failed", Response = document, StatusCode = 400 };
         }
 
         public async Task<ApiResponse<Document>> UploadDocumentAsync(UploadFileModel file, string userId)
@@ -326,10 +335,6 @@ namespace WebApplication1.Application.Services
             var fileName = Guid.NewGuid().ToString() + Path.GetExtension(file.FileUpload.FileName);
             var filePath = Path.Combine(folderPath, fileName);
 
-            //var fileName = Guid.NewGuid().ToString() + Path.GetExtension(file.FileUpload.FileName);
-            //var rDirectory = Directory.GetParent(Directory.GetCurrentDirectory()).FullName;
-            //var filePath = Path.Combine(rDirectory, "PDFs", fileName);
-
             if (!fileName.EndsWith(".pdf", StringComparison.OrdinalIgnoreCase))
             {
                 return new ApiResponse<Document>
@@ -349,18 +354,25 @@ namespace WebApplication1.Application.Services
             {
                 UserId = userId,
                 CategoryId = category.Id,
+                Code = file.Code ?? "Uncoded",
                 Title = file.Title ?? "Untitled",
                 Description = file.Description ?? "No description provided",
                 Version = file.Version ?? "1.0",
                 FileName = fileName,
                 FilePath = filePath,
+                UploadedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
             };
 
             await _dbContext.Documents.AddAsync(document);
             var res = await _dbContext.SaveChangesAsync();
             if (res > 0)
             {
-                return new ApiResponse<Document> { IsSuccess = true, Message = "Upload document successfully", Response = document, StatusCode = 201 };
+                var fullDoc = await _dbContext.Documents
+                    .Include(d => d.Category)
+                    .Include(d => d.User)
+                    .FirstOrDefaultAsync(d => d.Id == document.Id);
+                return new ApiResponse<Document> { IsSuccess = true, Message = "Upload document successfully", Response = fullDoc, StatusCode = 201 };
             }
             return new ApiResponse<Document> { IsSuccess = false, Message = "Upload document failed", Response = document, StatusCode = 400 };
 

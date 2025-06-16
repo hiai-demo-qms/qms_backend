@@ -5,6 +5,8 @@ using WebApplication1.Application.Services;
 
 namespace WebApplication1.Controllers
 {
+    [Route("api/[controller]")]
+    [ApiController]
     public class UserController : ControllerBase
     {
         private readonly IUserManagement _userManagement;
@@ -13,33 +15,24 @@ namespace WebApplication1.Controllers
             _userManagement = userManagement;
         }
 
-        //[HttpPost("sign-up")]
-        //public async Task<IActionResult> SignUp([FromBody] SignUpModel signUpModel)
-        //{
-        //    if (signUpModel == null)
-        //    {
-        //        return BadRequest("Sign-up model cannot be null.");
-        //    }
-        //    var resSignUp = await _userManagement.CreateUserWithTokenAsync(signUpModel);
-        //    if (resSignUp.IsSuccess)
-        //    {
-        //        return StatusCode(resSignUp.StatusCode, new {message = resSignUp.Message});
-        //    }
-        //    var resAssignRole = await _userManagement.AssignRole(resSignUp.Response!);
-        //    if (resAssignRole.IsSuccess)
-        //    {
-        //        return StatusCode(resAssignRole.StatusCode, new {message = resAssignRole.Message});
-        //    }
-        //    return StatusCode(resSignUp.StatusCode, new { message = resSignUp.Message });
-        //}
-
         [HttpGet("get-users")]
         public async Task<IActionResult> GetUsers()
         {
             var response = await _userManagement.GetListUser();
             if (response.IsSuccess)
             {
-                return Ok(response.Response);
+                return StatusCode(response.StatusCode, new { response = response.Response });
+            }
+            return StatusCode(response.StatusCode, new { message = response.Message });
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> GetUser()
+        {
+            var response = await _userManagement.GetUserInfoAsync(HttpContext);
+            if (response.IsSuccess)
+            {
+                return StatusCode(response.StatusCode, new { response = response.Response });
             }
             return StatusCode(response.StatusCode, new { message = response.Message });
         }

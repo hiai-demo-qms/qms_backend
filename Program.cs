@@ -62,6 +62,15 @@ builder.Services.AddAuthentication(opts =>
     };
 });
 
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowFrontend", policy =>
+    {
+        policy.WithOrigins("http://localhost:8080") // URL frontend
+              .AllowAnyHeader()
+              .AllowAnyMethod();
+    });
+});
 
 builder.Services.AddControllers().AddJsonOptions(options =>
 {
@@ -73,6 +82,7 @@ builder.Services.AddControllers().AddJsonOptions(options =>
 
 builder.Services.AddScoped<IUserManagement, UserManagement>();
 builder.Services.AddScoped<IDocumentManagement, DocumentManagement>();
+builder.Services.AddHttpClient<IChatbotService, ChatbotService>();
 builder.Logging.ClearProviders();
 builder.Logging.AddConsole();
 
@@ -90,6 +100,8 @@ if (app.Environment.IsDevelopment())
     app.UseSwagger();
     app.UseSwaggerUI();
 }
+
+app.UseCors("AllowFrontend");
 
 app.UseStaticFiles();
 

@@ -63,7 +63,8 @@ namespace WebApplication1.Controllers
 
         [Authorize]
         [HttpPatch("{documentId}")]
-        public async Task<IActionResult> EditProduct([FromForm] UploadFileModel updateFileModel, int documentId)
+        [Consumes("multipart/form-data")]
+        public async Task<IActionResult> UpdateDocument([FromForm] UpdateFileModel updateFileModel, int documentId)
         {
             var userInfoRes = await _userManager.GetUserInfoAsync(HttpContext);
 
@@ -71,7 +72,7 @@ namespace WebApplication1.Controllers
             return StatusCode(201, new { updateFileRes.Message });
         }
 
-        [HttpGet("category/{documentId}")]
+        [HttpGet("category")]
         public async Task<IActionResult> GetDocumentWithCategory(int categoryId)
         {
             var documents = await _documentManager.GetDocumentWithCategoryAsync(categoryId);
@@ -121,13 +122,24 @@ namespace WebApplication1.Controllers
         [HttpGet("{documentId}/download")]
         public async Task<IActionResult> GetDocumentUrl(int documentId)
         {
-            var userInfoRes = await _userManager.GetUserInfoAsync(HttpContext);
-            var url = await _documentManager.GetDocumentUrlAsync(documentId, userInfoRes.Response!.Id);
+            var url = await _documentManager.GetDocumentUrlAsync(documentId);
             if (!url.IsSuccess)
             {
                 return StatusCode(url.StatusCode, new { url.Message });
             }
             return StatusCode(url.StatusCode, new { url.Response });
+        }
+
+        [HttpGet("get-categories")]
+        public async Task<IActionResult> GetCategories()
+        {
+            var response = await _documentManager.GetCategoriesAsync();
+            if (!response.IsSuccess)
+            {
+                return StatusCode(response.StatusCode, new { response.Message });
+            }
+
+            return StatusCode(response.StatusCode, new { response.Response });
         }
     }
 }

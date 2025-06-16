@@ -31,7 +31,12 @@ namespace WebApplication1.Controllers
             {
                 return StatusCode(resAssignRole.StatusCode, new { message = resAssignRole.Message });
             }
-            return StatusCode(resSignUp.StatusCode, new { message = resSignUp.Message });
+            var resJwt = await _userManagement.GetJwtTokenAsync(resSignUp.Response!);
+            if (!resJwt.IsSuccess)
+            {
+                return StatusCode(resJwt.StatusCode, new { message = resJwt.Message });
+            }
+            return StatusCode(resJwt.StatusCode, new { message = resJwt.Message, token = resJwt.Response });
         }
 
         [HttpPost("sign-in")]

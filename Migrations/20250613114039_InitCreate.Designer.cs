@@ -12,8 +12,8 @@ using WebApplication1.Infrastructure.Data;
 namespace WebApplication1.Migrations
 {
     [DbContext(typeof(QmsDbContext))]
-    [Migration("20250526114240_InitialCreate")]
-    partial class InitialCreate
+    [Migration("20250613114039_InitCreate")]
+    partial class InitCreate
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -50,6 +50,22 @@ namespace WebApplication1.Migrations
                         .HasFilter("[NormalizedName] IS NOT NULL");
 
                     b.ToTable("AspNetRoles", (string)null);
+
+                    b.HasData(
+                        new
+                        {
+                            Id = "a673eb1a-c122-44a5-86a3-4a990e8b5404",
+                            ConcurrencyStamp = "1",
+                            Name = "Admin",
+                            NormalizedName = "Admin"
+                        },
+                        new
+                        {
+                            Id = "d7f0f9f9-846b-4e57-86d0-21f048ad3246",
+                            ConcurrencyStamp = "2",
+                            Name = "User",
+                            NormalizedName = "User"
+                        });
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<string>", b =>
@@ -158,6 +174,27 @@ namespace WebApplication1.Migrations
                     b.ToTable("AspNetUserTokens", (string)null);
                 });
 
+            modelBuilder.Entity("WebApplication1.Domain.Entities.AnalyzeResponse", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("DocumentId")
+                        .HasColumnType("int");
+
+                    b.Property<float>("Score")
+                        .HasColumnType("real");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("DocumentId");
+
+                    b.ToTable("AnalyzeResponses");
+                });
+
             modelBuilder.Entity("WebApplication1.Domain.Entities.Category", b =>
                 {
                     b.Property<int>("Id")
@@ -182,50 +219,50 @@ namespace WebApplication1.Migrations
                         new
                         {
                             Id = 1,
-                            CategoryName = "Quality Management",
-                            Description = "Category related to quality management systems"
+                            CategoryName = "Sổ tay chất lượng",
+                            Description = ""
                         },
                         new
                         {
                             Id = 2,
-                            CategoryName = "Risk Management",
-                            Description = "Category related to identifying and managing risks"
+                            CategoryName = "Chính sách chất lượng",
+                            Description = ""
                         },
                         new
                         {
                             Id = 3,
-                            CategoryName = "Auditing",
-                            Description = "Category related to audit processes and procedures"
+                            CategoryName = "Mục tiêu chất lượng",
+                            Description = ""
                         },
                         new
                         {
                             Id = 4,
-                            CategoryName = "Documentation",
-                            Description = "Category related to document control and records"
+                            CategoryName = "Kế hoạch chất lượng",
+                            Description = ""
                         },
                         new
                         {
                             Id = 5,
-                            CategoryName = "Management",
-                            Description = "Category for general management practices and policies"
+                            CategoryName = "Hướng dẫn công việc",
+                            Description = ""
                         },
                         new
                         {
                             Id = 6,
-                            CategoryName = "Improvement",
-                            Description = "Category for continuous improvement and corrective actions"
+                            CategoryName = "Biểu mẫu",
+                            Description = ""
                         },
                         new
                         {
                             Id = 7,
-                            CategoryName = "Environmental",
-                            Description = "Category for environmental management and compliance"
+                            CategoryName = "Hồ sơ",
+                            Description = ""
                         },
                         new
                         {
                             Id = 8,
-                            CategoryName = "Security",
-                            Description = "Category related to information and physical security"
+                            CategoryName = "Thủ tục",
+                            Description = ""
                         });
                 });
 
@@ -260,6 +297,44 @@ namespace WebApplication1.Migrations
                     b.ToTable("ChatLogs");
                 });
 
+            modelBuilder.Entity("WebApplication1.Domain.Entities.ClauseResult", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("AnalyzeResponseId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("AnalyzeResponseId1")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Clause")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<float>("Score")
+                        .HasColumnType("real");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AnalyzeResponseId");
+
+                    b.HasIndex("AnalyzeResponseId1");
+
+                    b.ToTable("ClauseResults");
+                });
+
             modelBuilder.Entity("WebApplication1.Domain.Entities.Document", b =>
                 {
                     b.Property<int>("Id")
@@ -270,6 +345,10 @@ namespace WebApplication1.Migrations
 
                     b.Property<int>("CategoryId")
                         .HasColumnType("int");
+
+                    b.Property<string>("Code")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("Description")
                         .IsRequired()
@@ -295,7 +374,7 @@ namespace WebApplication1.Migrations
 
                     b.Property<string>("UserId")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasColumnType("nvarchar(450)");
 
                     b.Property<string>("Version")
                         .IsRequired()
@@ -303,7 +382,57 @@ namespace WebApplication1.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("CategoryId");
+
+                    b.HasIndex("UserId");
+
                     b.ToTable("Documents");
+                });
+
+            modelBuilder.Entity("WebApplication1.Domain.Entities.DocumentSaving", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("DocumentId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("UserId")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(450)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("DocumentId");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("DocumentSavings");
+                });
+
+            modelBuilder.Entity("WebApplication1.Domain.Entities.Evidence", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("ClauseResultId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("EvidenceText")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ClauseResultId");
+
+                    b.ToTable("Evidences");
                 });
 
             modelBuilder.Entity("WebApplication1.Domain.Entities.User", b =>
@@ -430,6 +559,91 @@ namespace WebApplication1.Migrations
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+                });
+
+            modelBuilder.Entity("WebApplication1.Domain.Entities.AnalyzeResponse", b =>
+                {
+                    b.HasOne("WebApplication1.Domain.Entities.Document", null)
+                        .WithMany()
+                        .HasForeignKey("DocumentId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("WebApplication1.Domain.Entities.ClauseResult", b =>
+                {
+                    b.HasOne("WebApplication1.Domain.Entities.AnalyzeResponse", null)
+                        .WithMany("ClauseResults")
+                        .HasForeignKey("AnalyzeResponseId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("WebApplication1.Domain.Entities.AnalyzeResponse", "AnalyzeResponse")
+                        .WithMany()
+                        .HasForeignKey("AnalyzeResponseId1")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("AnalyzeResponse");
+                });
+
+            modelBuilder.Entity("WebApplication1.Domain.Entities.Document", b =>
+                {
+                    b.HasOne("WebApplication1.Domain.Entities.Category", "Category")
+                        .WithMany()
+                        .HasForeignKey("CategoryId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("WebApplication1.Domain.Entities.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Category");
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("WebApplication1.Domain.Entities.DocumentSaving", b =>
+                {
+                    b.HasOne("WebApplication1.Domain.Entities.Document", "Document")
+                        .WithMany()
+                        .HasForeignKey("DocumentId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("WebApplication1.Domain.Entities.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Document");
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("WebApplication1.Domain.Entities.Evidence", b =>
+                {
+                    b.HasOne("WebApplication1.Domain.Entities.ClauseResult", "ClauseResult")
+                        .WithMany("Evidences")
+                        .HasForeignKey("ClauseResultId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("ClauseResult");
+                });
+
+            modelBuilder.Entity("WebApplication1.Domain.Entities.AnalyzeResponse", b =>
+                {
+                    b.Navigation("ClauseResults");
+                });
+
+            modelBuilder.Entity("WebApplication1.Domain.Entities.ClauseResult", b =>
+                {
+                    b.Navigation("Evidences");
                 });
 #pragma warning restore 612, 618
         }

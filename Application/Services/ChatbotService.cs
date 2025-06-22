@@ -15,12 +15,14 @@ namespace WebApplication1.Application.Services
         private readonly IChatbotService _chatbotService;
         private readonly HttpClient _httpClient;
         private readonly string _chatbotApiUrl;
+        private readonly IDocumentManagement _documentManagement;
 
-        public ChatbotService(QmsDbContext dbContext, HttpClient httpClient)
+        public ChatbotService(QmsDbContext dbContext, HttpClient httpClient, IDocumentManagement documentManagement)
         {
             _dbContext = dbContext;
             _httpClient = httpClient;
             _chatbotApiUrl = "https://ample-wildly-parrot.ngrok-free.app/";
+            _documentManagement = documentManagement;
         }
         public async Task<ApiResponse<AnalyzeDocumentResponse>> AnalyzeDocumentAsync(IFormFile file)
         {
@@ -61,33 +63,143 @@ namespace WebApplication1.Application.Services
         public async Task<ApiResponse<string>> GetChatResponseAsync(string userId, string message)
         {
             var request = new ChatRequest { question = message };
+            string reply;
 
-            var response = await _httpClient.PostAsJsonAsync(_chatbotApiUrl + "chat", request);
-            if (response.IsSuccessStatusCode)
+            var labelResponse = await _httpClient.PostAsJsonAsync(_chatbotApiUrl + "get-label", request);
+            var labelRes = await labelResponse.Content.ReadFromJsonAsync<ChatResponse>();
+            if (labelRes?.response == "document_search")
             {
-                var result = await response.Content.ReadFromJsonAsync<ChatResponse>();
-                if (result != null)
+                string query = message.ToLower();
+
+                var keywords = await ExtractKeywordsAsync(message);
+
+                if (keywords == null || !keywords.Any())
                 {
-                    ChatLog chatLog = new ChatLog
-                    {
-                        UserId = userId,
-                        UserMessage = message,
-                        BotResponse = result.response,
-                        CreatedAt = DateTime.UtcNow
-                    };
-                    await _dbContext.ChatLogs.AddAsync(chatLog);
-                    var res = await _dbContext.SaveChangesAsync();
-                    if (res > 0)
-                    {
-                        return new ApiResponse<string> { IsSuccess = true, Message = "Connect chatbot successfully", Response = chatLog.BotResponse, StatusCode = 201 };
-                    }
-                    return new ApiResponse<string> { IsSuccess = false, Message = "Connect chatbot failed", Response = "Có lỗi xảy ra, vui lòng thử lại sau.", StatusCode = 400 };
+                    reply = "Rất tiếc, tôi không tìm thấy từ khóa để tìm kiếm tài liệu.";
                 }
-                
+                else
+                {
+                    var documents = await _dbContext.Documents
+                        .Where(d => keywords.Any(k =>
+                            d.Title.ToLower().Contains(k) ||
+                            d.Description.ToLower().Contains(k) ||
+                            d.Code.ToLower().Contains(k)))
+                        .Take(3)
+                        .ToListAsync();
+
+                    if (!documents.Any())
+                    {
+                        reply = "Rất tiếc, tôi không tìm thấy tài liệu phù hợp.";
+                    }
+                    else
+                    {
+                        reply = "Tôi tìm thấy các tài liệu liên quan:\n";
+                        foreach (var doc in documents)
+                        {
+                            var result = await _documentManagement.GetDocumentUrlAsync(doc.Id);
+                            string shortDesc = string.IsNullOrEmpty(doc.Description)
+                                ? ""
+                                : doc.Description.Length > 100
+                                    ? doc.Description.Substring(0, 100) + "..."
+                                    : doc.Description;
+
+                            string url = result.IsSuccess ? result.Response : doc.FilePath;
+                            reply += $"\n📄 {doc.Title} (Mã: {doc.Code})\n📝 {shortDesc}\n📂 {url}\n";
+                        }
+                    }
+                }
+                ChatLog chatLog = new ChatLog
+                {
+                    UserId = userId,
+                    UserMessage = message,
+                    BotResponse = reply,
+                    CreatedAt = DateTime.UtcNow
+                };
+                await _dbContext.ChatLogs.AddAsync(chatLog);
+                var res = await _dbContext.SaveChangesAsync();
+                if (res > 0)
+                {
+                    return new ApiResponse<string> { IsSuccess = true, Message = "Connect chatbot successfully", Response = chatLog.BotResponse, StatusCode = 201 };
+                }
+            }
+            else if (labelRes?.response == "normal_question")
+            {
+                // Lấy 5 tin nhắn gần nhất của người dùng
+                var history = await _dbContext.ChatLogs
+                    .Where(x => x.UserId == userId && !x.IsDeleted)
+                    .OrderByDescending(x => x.CreatedAt)
+                    .Take(3)
+                    .ToListAsync();
+
+                // Tạo context từ lịch sử chat
+                string context = string.Join("\n", history
+                    .OrderBy(x => x.CreatedAt)
+                    .Select(x => $"Người dùng: {x.UserMessage}\nBot: {x.BotResponse}"));
+
+
+                // gửi:
+                ChatRequest requestFull = new ChatRequest { question = $"{context}\nNgười dùng: {message}\nBot: " } ;
+
+                var response = await _httpClient.PostAsJsonAsync(_chatbotApiUrl + "chat", requestFull);
+                if (response.IsSuccessStatusCode)
+                {
+                    var result = await response.Content.ReadFromJsonAsync<ChatResponse>();
+                    if (result != null)
+                    {
+                        reply = result.response;
+                        ChatLog chatLog = new ChatLog
+                        {
+                            UserId = userId,
+                            UserMessage = message,
+                            BotResponse = reply,
+                            CreatedAt = DateTime.UtcNow
+                        };
+                        await _dbContext.ChatLogs.AddAsync(chatLog);
+                        var res = await _dbContext.SaveChangesAsync();
+                        if (res > 0)
+                        {
+                            return new ApiResponse<string> { IsSuccess = true, Message = "Connect chatbot successfully", Response = chatLog.BotResponse, StatusCode = 201 };
+                        }
+                    }
+
+                }
+            }
+            else if (labelRes?.response == "unknown")
+            {
+                reply = "Xin lỗi, câu hỏi của bạn không thuộc phạm vi quản lý chất lượng tài liệu (QMS). Vui lòng hỏi về các chủ đề liên quan đến quản lý chất lượng tài liệu để tôi có thể hỗ trợ bạn tốt hơn. ";
+                return new ApiResponse<string> { IsSuccess = true, Message = "Connect chatbot successfully", Response = reply, StatusCode = 201 };
+                //ChatLog chatLog = new ChatLog
+                //{
+                //    UserId = userId,
+                //    UserMessage = message,
+                //    BotResponse = reply,
+                //    CreatedAt = DateTime.UtcNow
+                //};
+                //await _dbContext.ChatLogs.AddAsync(chatLog);
+                //var res = await _dbContext.SaveChangesAsync();
+                //if (res > 0)
+                //{
+                //    return new ApiResponse<string> { IsSuccess = true, Message = "Connect chatbot successfully", Response = reply, StatusCode = 201 };
+                //}
             }
 
             return new ApiResponse<string> { IsSuccess = false, Message = "Connect chatbot failed", Response = "Có lỗi xảy ra, vui lòng thử lại sau.", StatusCode = 400 };
+
         }
+
+        public async Task<List<string>> ExtractKeywordsAsync(string question)
+        {
+            var request = new { question };
+            var response = await _httpClient.PostAsJsonAsync(_chatbotApiUrl + "extract-keywords", request);
+            if (response.IsSuccessStatusCode)
+            {
+                var content = await response.Content.ReadAsStringAsync();
+                var result = JsonSerializer.Deserialize<KeywordResponse>(content, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+                return result?.Keywords ?? new List<string>();
+            }
+            return new List<string>();
+        }
+
         public async Task<ApiResponse<List<ChatLog>>> GetChatLogsAsync(string userId)
         {
             return await _chatbotService.GetChatLogsAsync(userId);
@@ -104,5 +216,6 @@ namespace WebApplication1.Application.Services
         {
             return await _chatbotService.GetAnalyzeResponsesAsync(documentId, userId);
         }
+
     }
 }

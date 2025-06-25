@@ -41,11 +41,11 @@ namespace WebApplication1.Controllers
         [Authorize]
         [HttpPost]
         [Consumes("multipart/form-data")]
-        public async Task<IActionResult> UploadDocument([FromForm] UploadFileModel uploadFileModel)
+        public async Task<IActionResult> UploadDocument([FromForm] UploadFileModel uploadFileModel, [FromForm] int analyzeResponseId)
         {
             var userInfoRes = await _userManager.GetUserInfoAsync(HttpContext);
 
-            var uploadDocumentRes = await _documentManager.UploadDocumentAsync(uploadFileModel, userInfoRes.Response!.Id);
+            var uploadDocumentRes = await _documentManager.UploadDocumentAsync(uploadFileModel, userInfoRes.Response!.Id, analyzeResponseId);
             return StatusCode(201, new { uploadDocumentRes.Message });
         }
         [Authorize]
@@ -64,11 +64,11 @@ namespace WebApplication1.Controllers
         [Authorize]
         [HttpPatch("{documentId}")]
         [Consumes("multipart/form-data")]
-        public async Task<IActionResult> UpdateDocument([FromForm] UpdateFileModel updateFileModel, int documentId)
+        public async Task<IActionResult> UpdateDocument([FromForm] UpdateFileModel updateFileModel, int documentId, [FromForm] int analyzeResponseId)
         {
             var userInfoRes = await _userManager.GetUserInfoAsync(HttpContext);
 
-            var updateFileRes = await _documentManager.UpdateDocumentAsync(updateFileModel, documentId, userInfoRes.Response!.Id);
+            var updateFileRes = await _documentManager.UpdateDocumentAsync(updateFileModel, documentId, userInfoRes.Response!.Id, analyzeResponseId);
             return StatusCode(201, new { updateFileRes.Message });
         }
 
@@ -140,6 +140,41 @@ namespace WebApplication1.Controllers
             }
 
             return StatusCode(response.StatusCode, new { response.Response });
+        }
+
+        [HttpGet("bookmarked")]
+        public async Task<IActionResult> GetBookmarkedDocuments()
+        {
+            var userInfoRes = await _userManager.GetUserInfoAsync(HttpContext);
+            var documents = await _documentManager.GetBookmarkedDocuments(userInfoRes.Response!.Id);
+            if (!documents.IsSuccess)
+            {
+                return StatusCode(documents.StatusCode, new { documents.Message });
+            }
+            return StatusCode(documents.StatusCode, new { documents.Response });
+        }
+
+        [HttpPost("bookmark/{documentId}")]
+        public async Task<IActionResult> CreateBookmarkDocument(int documentId)
+        {
+            var userInfoRes = await _userManager.GetUserInfoAsync(HttpContext);
+            var document = await _documentManager.CreateBookmarkDocumentAsync(documentId, userInfoRes.Response!.Id);
+            if (!document.IsSuccess)
+            {
+                return StatusCode(document.StatusCode, new { document.Message });
+            }
+            return StatusCode(document.StatusCode, new { document.Response });
+        }
+        [HttpDelete("bookmark/{documentId}")]
+        public async Task<IActionResult> DeleteBookmarkDocument(int documentId)
+        {
+            var userInfoRes = await _userManager.GetUserInfoAsync(HttpContext);
+            var document = await _documentManager.DeleteBookmarkDocumentAsync(documentId, userInfoRes.Response!.Id);
+            if (!document.IsSuccess)
+            {
+                return StatusCode(document.StatusCode, new { document.Message });
+            }
+            return StatusCode(document.StatusCode, new { document.Message });
         }
     }
 }

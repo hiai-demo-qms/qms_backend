@@ -5,6 +5,6 @@
         public int Id { get; set; }
         public string EvidenceText { get; set; }
         public int ClauseResultId { get; set; }
-        public ClauseResult ClauseResult { get; set; }
+        //public ClauseResult ClauseResult { get; set; }
     }
 }

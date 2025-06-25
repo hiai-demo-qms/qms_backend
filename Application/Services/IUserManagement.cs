@@ -12,6 +12,7 @@ namespace WebApplication1.Application.Services
         public Task<ApiResponse<UserInfoModel>> GetUserInfoAsync(HttpContext httpContext);
         public Task<ApiResponse<User>> GetUserByEmailAsync(string email);
         public Task<ApiResponse<User>> GetUserAsync(HttpContext httpContext);
+        public Task<ApiResponse<User>> GetUserIAsync(HttpContext httpContext);
         public Task<ApiResponse<List<UserInfoModel>>> GetListUser();
         public Task<ApiResponse<AuthResponse>> RenewAccessTokenAsync(AuthResponse authReponse);
         public Task<ApiResponse<string>> ChangeNewPasswordAsync(User user, ChangePasswordModel changePasswordModel);

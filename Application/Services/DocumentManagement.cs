@@ -207,7 +207,7 @@ namespace WebApplication1.Application.Services
             };
         }
 
-        public async Task<ApiResponse<Document>> UpdateDocumentAsync(UpdateFileModel file, int documentId, string userId)
+        public async Task<ApiResponse<Document>> UpdateDocumentAsync(UpdateFileModel file, int documentId, string userId, int analyzeResponseId)
         {
             var document = await _dbContext.Documents.FirstOrDefaultAsync(m => m.Id == documentId);
             if (document == null)
@@ -296,6 +296,13 @@ namespace WebApplication1.Application.Services
             document.Description = file.Description;
             document.Version = file.Version;
 
+            var analyzeResponse = await _dbContext.AnalyzeResponses.FirstOrDefaultAsync(a => a.Id == analyzeResponseId);
+            if (analyzeResponse != null)
+            {
+                analyzeResponse.DocumentId = document.Id;
+                _dbContext.AnalyzeResponses.Update(analyzeResponse);
+            }
+
             var res = await _dbContext.SaveChangesAsync();
             if (res > 0)
             {
@@ -305,7 +312,7 @@ namespace WebApplication1.Application.Services
             return new ApiResponse<Document> { IsSuccess = false, Message = "Update document failed", Response = document, StatusCode = 400 };
         }
 
-        public async Task<ApiResponse<Document>> UploadDocumentAsync(UploadFileModel file, string userId)
+        public async Task<ApiResponse<Document>> UploadDocumentAsync(UploadFileModel file, string userId, int analyzeResponseId)
         {
             if (file == null || file.FileUpload == null || file.FileUpload.Length == 0)
             {
@@ -326,7 +333,7 @@ namespace WebApplication1.Application.Services
                     StatusCode = 404
                 };
             }
-            var projectDirectory = Directory.GetCurrentDirectory(); // D:\tot_nghiep\WebApplication1
+            var projectDirectory = Directory.GetCurrentDirectory();
             var folderPath = Path.Combine(projectDirectory, "wwwroot/PDFs");
             if (!Directory.Exists(folderPath))
             {
@@ -372,10 +379,92 @@ namespace WebApplication1.Application.Services
                     .Include(d => d.Category)
                     .Include(d => d.User)
                     .FirstOrDefaultAsync(d => d.Id == document.Id);
+                var analyzeResponse = await _dbContext.AnalyzeResponses.FirstOrDefaultAsync(a => a.Id == analyzeResponseId);
+                if (analyzeResponse != null)
+                {
+                    analyzeResponse.DocumentId = document.Id;
+                    _dbContext.AnalyzeResponses.Update(analyzeResponse);
+                    await _dbContext.SaveChangesAsync();
+                }
                 return new ApiResponse<Document> { IsSuccess = true, Message = "Upload document successfully", Response = fullDoc, StatusCode = 201 };
             }
             return new ApiResponse<Document> { IsSuccess = false, Message = "Upload document failed", Response = document, StatusCode = 400 };
 
+        }
+        public async Task<ApiResponse<List<Document>>> GetBookmarkedDocuments(string userId)
+        {
+            var documents = await _dbContext.DocumentSavings
+                .Where(ds => ds.UserId == userId)
+                .Include(ds => ds.Document)
+                    .ThenInclude(d => d.Category)
+                .Include(ds => ds.Document)
+                    .ThenInclude(d => d.User)
+                .Select(ds => ds.Document)
+                .ToListAsync();
+            return new ApiResponse<List<Document>>
+            {
+                IsSuccess = true,
+                Message = "Bookmarked documents retrieved successfully.",
+                Response = documents,
+                StatusCode = 200
+            };
+        }
+        public async Task<ApiResponse<Document>> CreateBookmarkDocumentAsync(int documentId, string userId)
+        {
+            var document = await _dbContext.Documents.FirstOrDefaultAsync(m => m.Id == documentId);
+            if (document == null)
+            {
+                return new ApiResponse<Document>
+                {
+                    IsSuccess = false,
+                    Message = "Document not found.",
+                    StatusCode = 404
+                };
+            }
+            var existingBookmark = await _dbContext.DocumentSavings
+                .FirstOrDefaultAsync(ds => ds.DocumentId == documentId && ds.UserId == userId);
+            if (existingBookmark != null)
+            {
+                return new ApiResponse<Document>
+                {
+                    IsSuccess = false,
+                    Message = "Document is already bookmarked.",
+                    StatusCode = 400
+                };
+            }
+            var bookmark = new DocumentSaving
+            {
+                DocumentId = documentId,
+                UserId = userId
+            };
+            await _dbContext.DocumentSavings.AddAsync(bookmark);
+            var res = await _dbContext.SaveChangesAsync();
+            if (res > 0)
+            {
+                return new ApiResponse<Document> { IsSuccess = true, Message = "Document bookmarked successfully", Response = document, StatusCode = 201 };
+            }
+            return new ApiResponse<Document> { IsSuccess = false, Message = "Failed to bookmark document", Response = document, StatusCode = 400 };
+        }
+        public async Task<ApiResponse<string>> DeleteBookmarkDocumentAsync(int documentId, string userId)
+        {
+            var bookmark = await _dbContext.DocumentSavings
+                .FirstOrDefaultAsync(ds => ds.DocumentId == documentId && ds.UserId == userId);
+            if (bookmark == null)
+            {
+                return new ApiResponse<string>
+                {
+                    IsSuccess = false,
+                    Message = "Bookmark not found.",
+                    StatusCode = 404
+                };
+            }
+            _dbContext.DocumentSavings.Remove(bookmark);
+            var res = await _dbContext.SaveChangesAsync();
+            if (res > 0)
+            {
+                return new ApiResponse<string> { IsSuccess = true, Message = "Bookmark deleted successfully", StatusCode = 200 };
+            }
+            return new ApiResponse<string> { IsSuccess = false, Message = "Failed to delete bookmark", StatusCode = 400 };
         }
     }
 }

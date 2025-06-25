@@ -66,11 +66,10 @@ namespace WebApplication1.Controllers
 
         public async Task<IActionResult> ChangePassword([FromBody] ChangePasswordModel changePasswordModel)
         {
-            var userInfoRes = await _userManagement.GetUserAsync(HttpContext);
+            var userInfoRes = await _userManagement.GetUserIAsync(HttpContext);
 
             var changePassword = await _userManagement.ChangeNewPasswordAsync(userInfoRes.Response, changePasswordModel);
             return StatusCode(changePassword.StatusCode, new { changePassword.Message });
-
         }
     }
 }

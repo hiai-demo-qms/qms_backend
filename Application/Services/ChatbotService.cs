@@ -1,4 +1,5 @@
-﻿using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.AspNetCore.SignalR.Protocol;
+using Microsoft.EntityFrameworkCore;
 using System.Net.Http.Headers;
 using System.Reflection.Metadata;
 using System.Text.Json;
@@ -37,10 +38,11 @@ namespace WebApplication1.Application.Services
 
             if (!response.IsSuccessStatusCode)
             {
+                var errorMessage = await response.Content.ReadAsStringAsync();
                 return new ApiResponse<AnalyzeDocumentResponse>
                 {
                     IsSuccess = false,
-                    Message = "Document analyzed failed",
+                    Message = $"Document analysis failed: {errorMessage}",
                     Response = null,
                     StatusCode = 400
                 };
@@ -52,12 +54,68 @@ namespace WebApplication1.Application.Services
                 PropertyNameCaseInsensitive = true
             });
 
+            Console.WriteLine($"AnalyzeDocumentAsync result: {responseBody}");
+
+            if (result == null || result.clause_Results == null)
+            {
+                return new ApiResponse<AnalyzeDocumentResponse>
+                {
+                    IsSuccess = false,
+                    Message = "Phân tích thất bại: kết quả trả về không hợp lệ.",
+                    Response = null,
+                    StatusCode = 400
+                };
+            }
+            // Lưu vào cơ sở dữ liệu (trừ DocumentId)
+            var analyzeEntity = new AnalyzeResponse
+            {
+                Score = (float)result.score,
+                ClauseResults = result.clause_Results.Select(c => new ClauseResult
+                {
+                    Clause = c.Clause,
+                    Title = c.Title,
+                    Status = c.Status,
+                    Score = (float)c.Score,
+                    Evidences = c.Evidences.Select(e => new Evidence
+                    {
+                        EvidenceText = e
+                    }).ToList()
+                }).ToList()
+            };
+
+            _dbContext.AnalyzeResponses.Add(analyzeEntity);
+            var res = await _dbContext.SaveChangesAsync();
+            if(res > 0)
+            {
+                // Trả về lại định dạng yêu cầu
+                var responseWithId = new AnalyzeDocumentResponse
+                {
+                    analyzeResponseId = analyzeEntity.Id,
+                    score = analyzeEntity.Score,
+                    clause_Results = analyzeEntity.ClauseResults.Select(cr => new ClauseResultsResponse
+                    {
+                        Clause = cr.Clause,
+                        Title = cr.Title,
+                        Status = cr.Status,
+                        Score = cr.Score,
+                        Evidences = cr.Evidences.Select(e => e.EvidenceText).ToList()
+                    }).ToList()
+                };
+
+                return new ApiResponse<AnalyzeDocumentResponse>
+                {
+                    IsSuccess = true,
+                    Message = "Document analyzed and saved successfully",
+                    Response = responseWithId,
+                    StatusCode = 200
+                };
+            }
             return new ApiResponse<AnalyzeDocumentResponse>
             {
                 IsSuccess = true,
-                Message = "Document analyzed successfully",
-                Response = result!,
-                StatusCode = 200
+                Message = "Document analyzed and saved failed",
+                Response = null,
+                StatusCode = 400
             };
         }
         public async Task<ApiResponse<string>> GetChatResponseAsync(string userId, string message)
@@ -168,19 +226,6 @@ namespace WebApplication1.Application.Services
             {
                 reply = "Xin lỗi, câu hỏi của bạn không thuộc phạm vi quản lý chất lượng tài liệu (QMS). Vui lòng hỏi về các chủ đề liên quan đến quản lý chất lượng tài liệu để tôi có thể hỗ trợ bạn tốt hơn. ";
                 return new ApiResponse<string> { IsSuccess = true, Message = "Connect chatbot successfully", Response = reply, StatusCode = 201 };
-                //ChatLog chatLog = new ChatLog
-                //{
-                //    UserId = userId,
-                //    UserMessage = message,
-                //    BotResponse = reply,
-                //    CreatedAt = DateTime.UtcNow
-                //};
-                //await _dbContext.ChatLogs.AddAsync(chatLog);
-                //var res = await _dbContext.SaveChangesAsync();
-                //if (res > 0)
-                //{
-                //    return new ApiResponse<string> { IsSuccess = true, Message = "Connect chatbot successfully", Response = reply, StatusCode = 201 };
-                //}
             }
 
             return new ApiResponse<string> { IsSuccess = false, Message = "Connect chatbot failed", Response = "Có lỗi xảy ra, vui lòng thử lại sau.", StatusCode = 400 };

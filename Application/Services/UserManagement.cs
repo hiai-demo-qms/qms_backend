@@ -265,6 +265,17 @@ namespace WebApplication1.Application.Services
             };
         }
 
+        public async Task<ApiResponse<User>> GetUserIAsync(HttpContext httpContext)
+        {
+            User? user = await _userManager.FindByNameAsync(httpContext.User.FindFirstValue(ClaimTypes.Name));
+
+            if (user == null)
+            {
+                return new ApiResponse<User> { IsSuccess = false, StatusCode = 401, Message = "Coudn't found the user from the token" };
+            }
+            return new ApiResponse<User> { IsSuccess = false, StatusCode = 401, Message = "Found user successfully", Response = user };
+        }
+
         public async Task<ApiResponse<AuthResponse>> RenewAccessTokenAsync(AuthResponse authReponse)
         {
             var accessToken = authReponse.AccessToken;

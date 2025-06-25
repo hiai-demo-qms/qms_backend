@@ -14,6 +14,20 @@ namespace WebApplication1.Migrations
         protected override void Up(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.CreateTable(
+                name: "AnalyzeResponses",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    Score = table.Column<float>(type: "real", nullable: false),
+                    DocumentId = table.Column<int>(type: "int", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_AnalyzeResponses", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "AspNetRoles",
                 columns: table => new
                 {
@@ -84,6 +98,29 @@ namespace WebApplication1.Migrations
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_ChatLogs", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "ClauseResults",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    Clause = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    Title = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    Status = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    Score = table.Column<float>(type: "real", nullable: false),
+                    AnalyzeResponseId = table.Column<int>(type: "int", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_ClauseResults", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_ClauseResults_AnalyzeResponses_AnalyzeResponseId",
+                        column: x => x.AnalyzeResponseId,
+                        principalTable: "AnalyzeResponses",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
                 });
 
             migrationBuilder.CreateTable(
@@ -227,23 +264,23 @@ namespace WebApplication1.Migrations
                 });
 
             migrationBuilder.CreateTable(
-                name: "AnalyzeResponses",
+                name: "Evidences",
                 columns: table => new
                 {
                     Id = table.Column<int>(type: "int", nullable: false)
                         .Annotation("SqlServer:Identity", "1, 1"),
-                    Score = table.Column<float>(type: "real", nullable: false),
-                    DocumentId = table.Column<int>(type: "int", nullable: false)
+                    EvidenceText = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    ClauseResultId = table.Column<int>(type: "int", nullable: false)
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_AnalyzeResponses", x => x.Id);
+                    table.PrimaryKey("PK_Evidences", x => x.Id);
                     table.ForeignKey(
-                        name: "FK_AnalyzeResponses_Documents_DocumentId",
-                        column: x => x.DocumentId,
-                        principalTable: "Documents",
+                        name: "FK_Evidences_ClauseResults_ClauseResultId",
+                        column: x => x.ClauseResultId,
+                        principalTable: "ClauseResults",
                         principalColumn: "Id",
-                        onDelete: ReferentialAction.Restrict);
+                        onDelete: ReferentialAction.Cascade);
                 });
 
             migrationBuilder.CreateTable(
@@ -272,56 +309,6 @@ namespace WebApplication1.Migrations
                         onDelete: ReferentialAction.Restrict);
                 });
 
-            migrationBuilder.CreateTable(
-                name: "ClauseResults",
-                columns: table => new
-                {
-                    Id = table.Column<int>(type: "int", nullable: false)
-                        .Annotation("SqlServer:Identity", "1, 1"),
-                    Clause = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    Title = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    Status = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    Score = table.Column<float>(type: "real", nullable: false),
-                    AnalyzeResponseId = table.Column<int>(type: "int", nullable: false),
-                    AnalyzeResponseId1 = table.Column<int>(type: "int", nullable: false)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_ClauseResults", x => x.Id);
-                    table.ForeignKey(
-                        name: "FK_ClauseResults_AnalyzeResponses_AnalyzeResponseId",
-                        column: x => x.AnalyzeResponseId,
-                        principalTable: "AnalyzeResponses",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.Restrict);
-                    table.ForeignKey(
-                        name: "FK_ClauseResults_AnalyzeResponses_AnalyzeResponseId1",
-                        column: x => x.AnalyzeResponseId1,
-                        principalTable: "AnalyzeResponses",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.Cascade);
-                });
-
-            migrationBuilder.CreateTable(
-                name: "Evidences",
-                columns: table => new
-                {
-                    Id = table.Column<int>(type: "int", nullable: false)
-                        .Annotation("SqlServer:Identity", "1, 1"),
-                    EvidenceText = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    ClauseResultId = table.Column<int>(type: "int", nullable: false)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_Evidences", x => x.Id);
-                    table.ForeignKey(
-                        name: "FK_Evidences_ClauseResults_ClauseResultId",
-                        column: x => x.ClauseResultId,
-                        principalTable: "ClauseResults",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.Cascade);
-                });
-
             migrationBuilder.InsertData(
                 table: "AspNetRoles",
                 columns: new[] { "Id", "ConcurrencyStamp", "Name", "NormalizedName" },
@@ -345,11 +332,6 @@ namespace WebApplication1.Migrations
                     { 7, "Hồ sơ", "" },
                     { 8, "Thủ tục", "" }
                 });
-
-            migrationBuilder.CreateIndex(
-                name: "IX_AnalyzeResponses_DocumentId",
-                table: "AnalyzeResponses",
-                column: "DocumentId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_AspNetRoleClaims_RoleId",
@@ -394,11 +376,6 @@ namespace WebApplication1.Migrations
                 name: "IX_ClauseResults_AnalyzeResponseId",
                 table: "ClauseResults",
                 column: "AnalyzeResponseId");
-
-            migrationBuilder.CreateIndex(
-                name: "IX_ClauseResults_AnalyzeResponseId1",
-                table: "ClauseResults",
-                column: "AnalyzeResponseId1");
 
             migrationBuilder.CreateIndex(
                 name: "IX_Documents_CategoryId",
@@ -457,19 +434,19 @@ namespace WebApplication1.Migrations
                 name: "AspNetRoles");
 
             migrationBuilder.DropTable(
-                name: "ClauseResults");
-
-            migrationBuilder.DropTable(
-                name: "AnalyzeResponses");
-
-            migrationBuilder.DropTable(
                 name: "Documents");
+
+            migrationBuilder.DropTable(
+                name: "ClauseResults");
 
             migrationBuilder.DropTable(
                 name: "AspNetUsers");
 
             migrationBuilder.DropTable(
                 name: "Categories");
+
+            migrationBuilder.DropTable(
+                name: "AnalyzeResponses");
         }
     }
 }

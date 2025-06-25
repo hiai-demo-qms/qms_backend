@@ -9,7 +9,7 @@
         public float Score { get; set; }
 
         public int AnalyzeResponseId { get; set; }
-        public AnalyzeResponse AnalyzeResponse { get; set; }
+        //public AnalyzeResponse AnalyzeResponse { get; set; }
 
         public List<Evidence> Evidences { get; set; } = new();
     }

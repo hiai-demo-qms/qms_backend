@@ -179,15 +179,13 @@ namespace WebApplication1.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
-                    b.Property<int>("DocumentId")
+                    b.Property<int?>("DocumentId")
                         .HasColumnType("int");
 
                     b.Property<float>("Score")
                         .HasColumnType("real");
 
                     b.HasKey("Id");
-
-                    b.HasIndex("DocumentId");
 
                     b.ToTable("AnalyzeResponses");
                 });
@@ -305,9 +303,6 @@ namespace WebApplication1.Migrations
                     b.Property<int>("AnalyzeResponseId")
                         .HasColumnType("int");
 
-                    b.Property<int>("AnalyzeResponseId1")
-                        .HasColumnType("int");
-
                     b.Property<string>("Clause")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
@@ -326,8 +321,6 @@ namespace WebApplication1.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("AnalyzeResponseId");
-
-                    b.HasIndex("AnalyzeResponseId1");
 
                     b.ToTable("ClauseResults");
                 });
@@ -558,30 +551,13 @@ namespace WebApplication1.Migrations
                         .IsRequired();
                 });
 
-            modelBuilder.Entity("WebApplication1.Domain.Entities.AnalyzeResponse", b =>
-                {
-                    b.HasOne("WebApplication1.Domain.Entities.Document", null)
-                        .WithMany()
-                        .HasForeignKey("DocumentId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-                });
-
             modelBuilder.Entity("WebApplication1.Domain.Entities.ClauseResult", b =>
                 {
                     b.HasOne("WebApplication1.Domain.Entities.AnalyzeResponse", null)
                         .WithMany("ClauseResults")
                         .HasForeignKey("AnalyzeResponseId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("WebApplication1.Domain.Entities.AnalyzeResponse", "AnalyzeResponse")
-                        .WithMany()
-                        .HasForeignKey("AnalyzeResponseId1")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
-
-                    b.Navigation("AnalyzeResponse");
                 });
 
             modelBuilder.Entity("WebApplication1.Domain.Entities.Document", b =>
@@ -624,13 +600,11 @@ namespace WebApplication1.Migrations
 
             modelBuilder.Entity("WebApplication1.Domain.Entities.Evidence", b =>
                 {
-                    b.HasOne("WebApplication1.Domain.Entities.ClauseResult", "ClauseResult")
+                    b.HasOne("WebApplication1.Domain.Entities.ClauseResult", null)
                         .WithMany("Evidences")
                         .HasForeignKey("ClauseResultId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
-
-                    b.Navigation("ClauseResult");
                 });
 
             modelBuilder.Entity("WebApplication1.Domain.Entities.AnalyzeResponse", b =>

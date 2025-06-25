@@ -6,6 +6,6 @@
         public string Title { get; set; }
         public string Status { get; set; }
         public double Score { get; set; }
-        public List<string> Evidence { get; set; }
+        public List<string> Evidences { get; set; }
     }
 }

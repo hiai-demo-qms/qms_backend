@@ -38,18 +38,18 @@ namespace WebApplication1.Infrastructure.Data
                 .HasForeignKey(ds => ds.UserId)
                 .OnDelete(DeleteBehavior.Restrict);
 
-            builder.Entity<AnalyzeResponse>()
-                .HasOne<Document>()
-                .WithMany()
-                .HasForeignKey(ar => ar.DocumentId)
-                .OnDelete(DeleteBehavior.Restrict);
+            //builder.Entity<AnalyzeResponse>()
+            //    .HasOne(ar => ar.Document)
+            //    .WithMany()
+            //    .HasForeignKey(ar => ar.DocumentId)
+            //    .OnDelete(DeleteBehavior.Restrict);
 
-            // Nếu ClauseResult có FK đến AnalyzeResponse thì cũng cấu hình tương tự
-            builder.Entity<ClauseResult>()
-                .HasOne<AnalyzeResponse>()
-                .WithMany(ar => ar.ClauseResults)
-                .HasForeignKey("AnalyzeResponseId") // Nếu có
-                .OnDelete(DeleteBehavior.Restrict);
+            //// Nếu ClauseResult có FK đến AnalyzeResponse thì cũng cấu hình tương tự
+            //builder.Entity<ClauseResult>()
+            //    .HasOne(c => c.AnalyzeResponse)
+            //    .WithMany(a => a.ClauseResults)
+            //    .HasForeignKey(c => c.AnalyzeResponseId)
+            //    .OnDelete(DeleteBehavior.Restrict);
 
             SeedRoles(builder);
         }
